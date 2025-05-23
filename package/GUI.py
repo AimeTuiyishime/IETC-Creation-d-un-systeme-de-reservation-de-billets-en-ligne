@@ -3,7 +3,7 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox
 
-données = '/Users/aime/EXO_PROGAM/CPOO/PROJET/CPOO_Projet/package/données.json'
+données = 'données.json'
 chemin_script = Path(__file__).resolve() # Obtient le chemin absolu du script
 chemin_dossier_script = chemin_script.parent # Obtient le dossier contenant le script
 chemin_fichier_json = chemin_dossier_script / données# Combine les chemins de manière OS-agnostique
