@@ -1,0 +1,92 @@
+[
+    {
+        "id": 1,
+        "nom": "Concert de Jazz",
+        "date": "20/11/2025 18:30",
+        "lieu": "Salle de Concert ABC",
+        "description": "Un concert de jazz avec des musiciens locaux.",
+        "places": 150,
+        "prix": 20.00    
+    },
+    {
+        "id": 2,
+        "nom": "Exposition d'Art Contemporain",
+        "date" : "15/7/2025 19:30",
+        "lieu": "Galerie d'Art XYZ",
+        "description": "Une exposition mettant en avant des artistes contemporains.",
+        "places": 100,
+        "prix": 10.00
+    },
+    {
+        "id": 3,
+        "nom": "Festival de Musique Classique",
+        "date": "05/09/2025 20:00",
+        "lieu": "Opéra Municipal",
+        "description": "Un festival réunissant des orchestres et solistes de musique classique.",
+        "places": 200,
+        "prix": 30.00
+    },
+    {
+        "id": 4,
+        "nom": "Pièce de Théâtre",
+        "date": "10/10/2025 20:00",
+        "lieu": "Théâtre National",
+        "description": "Une pièce de théâtre dramatique avec des acteurs renommés.",
+        "places": 250,
+        "prix": 25.00
+    },
+    {
+        "id": 5,
+        "nom": "Conférence sur l'Intelligence Artificielle",
+        "date": "12/12/2025 14:00",
+        "lieu": "Centre de Conférences Tech",
+        "description": "Une conférence sur les dernières avancées en intelligence artificielle.",
+        "places": 300,
+        "prix": 15.00
+    },
+    {
+        "id": 6,
+        "nom": "Atelier de Cuisine Italienne",
+        "date": "22/08/2025 10:00",
+        "lieu": "École de Cuisine Gourmet",
+        "description": "Un atelier pratique pour apprendre à cuisiner des plats italiens.",
+        "places": 30,
+        "prix": 50.00
+    },
+    {
+        "id": 7,
+        "nom": "Séance de Yoga en Plein Air",
+        "date": "18/06/2025 08:00",
+        "lieu": "Parc Central",
+        "description": "Une séance de yoga relaxante en plein air.",
+        "places": 50,
+        "prix": 5.00
+    },
+    {
+        "id": 8,
+        "nom": "Marathon de la Ville",
+        "date": "30/05/2025 07:00",
+        "lieu": "Centre-ville",
+        "description": "Un marathon ouvert à tous les coureurs.",
+        "places": 500,
+        "prix": 0.00
+    },
+    {
+        "id": 9,
+        "nom": "Soirée de Danse Latine",
+        "date": "25/04/2025 19:00",
+        "lieu": "Club de Danse Salsa",
+        "description": "Une soirée de danse latine avec des cours pour débutants.",
+        "places": 100,
+        "prix": 15.00
+    },
+    {
+        "id": 10,
+        "nom": "Projection de Film Indépendant",
+        "date": "28/03/2025 20:00",
+        "lieu": "Cinéma Art & Essai",
+        "description": "Une projection d'un film indépendant suivi d'une discussion avec le réalisateur.",
+        "places": 80,
+        "prix": 12.00
+    }
+]

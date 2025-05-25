@@ -1,15 +1,27 @@
 import json
 import tkinter as tk
 from pathlib import Path
-from tkinter import messagebox
+from tkinter import messagebox, ttk
 
+# Chemins des fichiers JSON
 données = 'données.json'
-chemin_script = Path(__file__).resolve() # Obtient le chemin absolu du script
-chemin_dossier_script = chemin_script.parent # Obtient le dossier contenant le script
-chemin_fichier_json = chemin_dossier_script / données# Combine les chemins de manière OS-agnostique
-with open(chemin_fichier_json, 'r', encoding='utf-8') as file:
-    données = json.load(file)
+données_event = 'données_event.json'
 
+# Fonction pour obtenir le chemin absolu du fichier JSON
+def obtenir_chemin_fichier_json(nom_fichier):
+    """Retourne le chemin absolu du fichier JSON."""
+    chemin_script = Path(__file__).resolve()  # Obtient le chemin absolu du script
+    chemin_dossier_script = chemin_script.parent  # Obtient le dossier contenant le script
+    chemin_fichier_json = chemin_dossier_script / nom_fichier  # Combine les chemins de manière OS-agnostique
+    return chemin_fichier_json
+
+# Chargement des données depuis les fichiers JSON
+with open(obtenir_chemin_fichier_json(données), 'r', encoding='utf-8') as file:
+    données = json.load(file)
+with open(obtenir_chemin_fichier_json(données_event), 'r', encoding='utf-8') as file:
+    données_event = json.load(file)
+
+# Fonction pour valider la connexion
 def valider_connexion():
     """Récupère le nom d'utilisateur et le mot de passe et affiche un message."""
     nom_utilisateur = entry_nom_utilisateur.get()
@@ -18,35 +30,72 @@ def valider_connexion():
     for i in range(len(données)):
         if nom_utilisateur == données[i]['nom'] and mot_de_passe == données[i]['password']:
             fenetre_login.destroy()
-            messagebox.showinfo("Connexion Réussie", "Connexion réussie !")
             afficher_fenetre_principale()
             break
     else:
         messagebox.showerror("Erreur", "Nom d'utilisateur ou mot de passe incorrect.")
 
+# Fonction pour afficher la fenêtre principale après une connexion réussie
 def afficher_fenetre_principale():
     """Crée et affiche la fenêtre principale après une connexion réussie."""
     fenetre_principale = tk.Tk()
-    fenetre_principale.title("Tableau de bord")
-    fenetre_principale.geometry("400x300") # Taille de la nouvelle fenêtre
+    fenetre_principale.title("Réservation de billets")
+    fenetre_principale.geometry("800x600") # Taille de la nouvelle fenêtre
 
     # Centrer la nouvelle fenêtre
-    largeur_fenetre_p = 400
-    hauteur_fenetre_p = 300
+    largeur_fenetre_p = 800
+    hauteur_fenetre_p = 600
     largeur_ecran = fenetre_principale.winfo_screenwidth()
     hauteur_ecran = fenetre_principale.winfo_screenheight()
     x_coordonnee_p = int((largeur_ecran / 2) - (largeur_fenetre_p / 2))
     y_coordonnee_p = int((hauteur_ecran / 2) - (hauteur_fenetre_p / 2))
     fenetre_principale.geometry(f"{largeur_fenetre_p}x{hauteur_fenetre_p}+{x_coordonnee_p}+{y_coordonnee_p}")
 
-    label_accueil = tk.Label(fenetre_principale, text="Bienvenue dans l'application !", font=("Arial", 16))
-    label_accueil.pack(pady=20)
+    # --- Section pour la liste d'événements ---
+    events_frame = ttk.LabelFrame(fenetre_principale)
+    events_frame.pack(expand=True, fill=tk.BOTH, pady=20)
 
-    # Vous pouvez ajouter d'autres widgets à cette fenêtre principale ici
-    bouton_quitter_principal = tk.Button(fenetre_principale, text="Quitter", command=fenetre_principale.destroy)
-    bouton_quitter_principal.pack(pady=10)
+    # Titre de la section
+    dispo_event_frame = ttk.Frame(events_frame)
+    dispo_event_frame.pack(side=tk.TOP, fill=tk.X, padx=0)   
+    ttk.Label(dispo_event_frame, text="Événements Disponibles:", style="Header.TLabel").pack(anchor=tk.W, pady=(0,5))
+
+    # Listbox pour afficher les événements
+    listbox_evenements = tk.Listbox(events_frame, height=10, exportselection=False, font=('Consolas', 10))
+    listbox_evenements.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0,10))
+
+    # Lier la sélection de la Listbox à l'affichage des détails de l'événement    
+    scrollbar_evenements = ttk.Scrollbar(events_frame, orient=tk.VERTICAL, command=listbox_evenements.yview)
+    scrollbar_evenements.pack(side=tk.LEFT, fill=tk.Y)
+    listbox_evenements.config(yscrollcommand=scrollbar_evenements.set)
+    listbox_evenements.bind('<<ListboxSelect>>', lambda event: afficher_details_evenement(event, lbl_details_evenement))
+
+    # Remplissage de la Listbox avec les événements
+    for evenement in données_event:
+        listbox_evenements.insert(tk.END, f"{evenement['date']} - {evenement['nom']}")
+
+    # --- Section Détails Événement ---
+    details_event_frame = ttk.Frame(events_frame)
+    details_event_frame.pack(side=tk.TOP, fill=tk.X, padx=0)
+
+    # Titre de la section    
+    ttk.Label(details_event_frame, text="Détails de l'Événement:", style="Header.TLabel").pack(anchor=tk.W, pady=(0,10))
+    lbl_details_evenement = ttk.Label(details_event_frame, text="Sélectionnez un événement pour voir les détails.", justify=tk.LEFT, wraplength=300)
+    lbl_details_evenement.pack(anchor=tk.NW, fill=tk.X)
 
     fenetre_principale.mainloop()
+
+# Fonction pour afficher les détails de l'événement sélectionné
+def afficher_details_evenement(event, label):
+    """Affiche les détails de l'événement sélectionné dans la Listbox."""
+    selection = event.widget.curselection()
+    if selection:
+        index = selection[0]
+        evenement = données_event[index]
+        details = f"Nom: {evenement['nom']}\nDate: {evenement['date']}\nLieu: {evenement['lieu']}\nDescription: {evenement['description']}\nPrix: {evenement['prix']} €\nPlaces disponibles: {evenement['places']}"
+        label.config(text=details)
+    else:
+        label.config(text="Sélectionnez un événement pour voir les détails.")
 
 # Création de la fenêtre login
 fenetre_login = tk.Tk()
