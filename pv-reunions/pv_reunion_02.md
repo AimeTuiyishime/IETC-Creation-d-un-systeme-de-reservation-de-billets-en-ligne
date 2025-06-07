@@ -2,7 +2,7 @@
 
 **Date** : Samedi 18 mai 2025  
 **Lieu** : En ligne  
-**Participants** : Aime, Néhémie
+**Participants** : Aimé, Néhémie
 
 ---
 
