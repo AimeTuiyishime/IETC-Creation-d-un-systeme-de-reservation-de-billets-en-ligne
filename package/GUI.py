@@ -2,6 +2,7 @@ import json
 import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox, ttk
+from package.package_class_base import *
 
 # ---Chemins des fichiers JSON---
 données = 'données.json'
@@ -23,6 +24,12 @@ with open(obtenir_chemin_fichier_json(données), 'r', encoding='utf-8') as file:
     données = json.load(file)
 with open(obtenir_chemin_fichier_json(données_event), 'r', encoding='utf-8') as file:
     données_event = json.load(file)
+
+# ---Création des objets Client à partir des données JSON---
+# La liste `client` contiendra des instances de la classe Client, créées à partir des données chargées depuis le fichier JSON.
+# Chaque objet Client est initialisé avec les attributs idClient, nom, email et mdp extraits des données JSON.
+# Cela permet de structurer les données de manière orientée objet, facilitant ainsi la manipulation et l'accès aux informations
+client = list(Client(idClient=i['idclient'], nom=i['nom'], email=i['email'], mdp=i['password']) for i in données)  # Création des objets Client à partir des données JSON
 
 # ---Fonction pour afficher la fenêtre de connexion---
 def afficher_fenetre_login():
@@ -80,7 +87,9 @@ def afficher_fenetre_login():
         mot_de_passe = entry_mot_de_passe.get() # Récupération du mot de passe
 
         for i in range(len(données)):
-            if nom_utilisateur == données[i]['nom'] and mot_de_passe == données[i]['password']: # Vérification des informations de connexion
+            if nom_utilisateur == client[i].nom and mot_de_passe == client[i].mdp: # Vérification des informations de connexion
+                global utilisateur_actif
+                utilisateur_actif = client[i] # Définit l'utilisateur actif
                 fenetre_login.destroy()
                 afficher_fenetre_principale()
                 break
@@ -128,6 +137,22 @@ def afficher_fenetre_principale():
     frame_princip = ttk.Frame(fenetre_principale, padding="10")
     frame_princip.pack(expand=True, fill=tk.BOTH)
 
+    # --- Section Utilisateur ---
+    user_frame = ttk.LabelFrame(frame_princip, text="Utilisateur", padding="10")
+    user_frame.pack(fill=tk.X, pady=5)
+    user_status = ttk.Label(user_frame, text=f"Utilisateur Actif: {utilisateur_actif.nom}", style="Header.TLabel")
+    user_status.pack(side=tk.LEFT, padx=5)
+
+    # ---Bouton pour changer d'utilisateur---
+    def detruire_fenetre():
+        """Ferme la fenêtre principale et retourne à la fenêtre de connexion."""
+        fenetre_principale.destroy()
+        afficher_fenetre_login()
+    ttk.Button(user_frame, text="Changer d'Utilisateur", command= detruire_fenetre).pack(side=tk.RIGHT)
+
+    # ---Bouton pour s'abonner à la newsletter---
+    ttk.Button(user_frame, text="S'abbonner à la Newsletter", command=None).pack(side=tk.RIGHT, padx=5)
+    
     # ---Section Événements---
     frame_evene = ttk.LabelFrame(frame_princip, text="Événements Disponibles", padding="10")
     frame_evene.pack(expand=True, fill=tk.BOTH, pady=5)
