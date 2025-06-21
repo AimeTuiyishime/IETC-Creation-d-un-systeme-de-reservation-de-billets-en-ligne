@@ -1,5 +1,5 @@
 class Newsletter:
-    def __init__(self, idAbonnement, emailClient, estActif=True):
+    def __init__(self, idAbonnement, emailClient, estActif=False):
         self.idAbonnement = idAbonnement
         self.emailClient = emailClient
         self.estActif = estActif
