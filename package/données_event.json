@@ -51,42 +51,6 @@
         "lieu": "École de Cuisine Gourmet",
         "description": "Un atelier pratique pour apprendre à cuisiner des plats italiens.",
         "places": 30,
-        "prix": 50.00
-    },
-    {
-        "id": 7,
-        "nom": "Séance de Yoga en Plein Air",
-        "date": "18/06/2025 08:00",
-        "lieu": "Parc Central",
-        "description": "Une séance de yoga relaxante en plein air.",
-        "places": 50,
-        "prix": 5.00
-    },
-    {
-        "id": 8,
-        "nom": "Marathon de la Ville",
-        "date": "30/05/2025 07:00",
-        "lieu": "Centre-ville",
-        "description": "Un marathon ouvert à tous les coureurs.",
-        "places": 500,
         "prix": 0.00
-    },
-    {
-        "id": 9,
-        "nom": "Soirée de Danse Latine",
-        "date": "25/04/2025 19:00",
-        "lieu": "Club de Danse Salsa",
-        "description": "Une soirée de danse latine avec des cours pour débutants.",
-        "places": 100,
-        "prix": 15.00
-    },
-    {
-        "id": 10,
-        "nom": "Projection de Film Indépendant",
-        "date": "28/03/2025 20:00",
-        "lieu": "Cinéma Art & Essai",
-        "description": "Une projection d'un film indépendant suivi d'une discussion avec le réalisateur.",
-        "places": 80,
-        "prix": 12.00
     }
 ]
