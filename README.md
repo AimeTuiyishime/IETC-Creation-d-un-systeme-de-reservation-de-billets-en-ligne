@@ -38,3 +38,22 @@ Toutes les relations sont décrites dans le diagramme de classes en UML (voir do
 - Grobloc (Aime)  
 - El-Nehmo (Nehemie)
 
+mise à jour le 22/06/2025 par Grobloc:
+
+L'application offre une interface utilisateur graphique (GUI) développée avec `tkinter` permettant les actions suivantes :
+
+-   **Authentification des utilisateurs**: Connexion sécurisée pour les clients enregistrés. Les données utilisateurs sont chargées depuis `données.json`.
+-   **Consultation des événements**: Les utilisateurs peuvent visualiser la liste des événements disponibles (chargés depuis `données_event.json`), consulter leurs détails (date, lieu, description, prix) et voir le nombre de places restantes en temps réel.
+-   **Réservation de billets**:
+    -   Sélection d'un événement et du nombre de billets souhaités.
+    -   Vérification de la disponibilité des places avant la confirmation.
+    -   Association de la réservation au client connecté.
+-   **Gestion des réservations**:
+    -   Visualisation des billets et réservations actives pour l'utilisateur connecté.
+    -   Annulation de réservations, ce qui met à jour dynamiquement le nombre de places disponibles pour l'événement concerné.
+    -   **Persistance des réservations par session**: Les réservations d'un utilisateur restent accessibles s'il se déconnecte puis se reconnecte au cours de la même session d'utilisation de l'application.
+
+Fonctionnalités prévues (partiellement ou non encore implémentées dans la GUI actuelle) :
+-   Choix spécifique des sièges par catégorie.
+-   Processus de paiement.
+-   Abonnement à la Newsletter
