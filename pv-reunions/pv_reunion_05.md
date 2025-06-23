@@ -11,7 +11,6 @@
 * Création des issues GitHub
 * Répartition des classes à implémenter
 * Planification des tâches de développement
-
 ---
 
 ## Éléments discutés
