@@ -3,7 +3,6 @@
 **Date** : 10 mai 2025  
 **Lieu** : En ligne (Distance)  
 **Participants** : Aimé, Néhémie
-
 ---
 
 ## Ordre du jour
