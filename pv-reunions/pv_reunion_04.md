@@ -13,7 +13,6 @@
 - Organisation des branches Git
 - Réorganisation du dépôt et des fichiers
 - Prochaines étapes
-
 ---
 
 ## Éléments discutés
