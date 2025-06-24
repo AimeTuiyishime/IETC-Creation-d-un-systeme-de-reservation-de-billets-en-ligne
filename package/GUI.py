@@ -4,18 +4,25 @@ from pathlib import Path
 from tkinter import messagebox, ttk
 import datetime
 from package.package_class_base import Client, Evenement, Reservation, Billet
+from package.package_class_additionnel import Newsletter, Paiement, Lieu, CategorieSiege, Siege as SiegeConfig # SiegeConfig est utilisé pour la configuration statique des sièges
 
 # ---Chemins des fichiers JSON---
 # Ces chemins sont relatifs au script en cours d'exécution.
-CHEMIN_DONNEES_CLIENTS = 'données.json'
+CHEMIN_DONNEES_CLIENTS = 'données_clients.json'
 CHEMIN_DONNEES_EVENTS = 'données_event.json'
+CHEMIN_CONFIGS_LIEUX = 'donnees_configurations_lieux.json'
 
 # ---Variables globales pour les données de l'application---
 # Utilisées pour stocker les instances d'objets chargées depuis les JSON ou créées pendant l'exécution.
-clients_objects: list[Client] = []
-evenements_objects: list[Evenement] = []
+clients_objects: list[Client] = [] # Liste des clients chargés depuis le JSON
+evenements_objects: list[Evenement] = [] # Liste des événements chargés
 reservations_objects: list[Reservation] = [] # Pour stocker toutes les réservations
 utilisateur_actif: Client | None = None # L'utilisateur actuellement connecté
+abonnements_newsletter_objects: list[Newsletter] = [] # Liste pour stocker les objets Newsletter
+LISTE_CONFIGS_LIEUX: list[Lieu] = [] # Pour stocker les configurations de lieux chargées
+
+_prochain_id_abonnement_newsletter = 1 # Pour générer des ID uniques pour les abonnements
+_prochain_id_paiement = 1 # Pour générer des ID uniques pour les paiements
 
 # ---Fonction pour obtenir le chemin absolu du fichier JSON---
 def obtenir_chemin_fichier_json(nom_fichier: str) -> Path:
@@ -42,38 +49,130 @@ def charger_donnees_evenements():
     
     with open(chemin_fichier, 'r', encoding='utf-8') as file:
         donnees_json = json.load(file)
-    evenements_objects = [
-        Evenement(
-            id_event=i['id'], 
-            nom=i['nom'], 
-            date=i['date'], 
-            lieu=i['lieu'], 
-            description=i['description'], 
-            places=i['places'], 
-            prix=float(i['prix'])
-        ) for i in donnees_json
-    ]
+    evenements_temp = []
+    for event_data in donnees_json:
+        # Création initiale de l'objet Evenement
+        evenement_obj = Evenement(
+            id_event=event_data['id'],
+            nom=event_data['nom'],
+            date=event_data['date'],
+            lieu_nom_str=event_data['lieu'], # Nom du lieu (str)
+            description=event_data['description']
+        )
+        
+        # Trouver la configuration du lieu correspondante
+        config_lieu_trouvee = next((lc for lc in LISTE_CONFIGS_LIEUX if lc.nomLieu == event_data['lieu']), None)
+        
+        if config_lieu_trouvee:
+            # Lier la configuration du lieu à l'événement
+            evenement_obj.lier_config_lieu_et_initialiser_etat_sieges(config_lieu_trouvee) # Nom de méthode mis à jour
+            evenements_temp.append(evenement_obj)
+        else:
+            print(f"Attention: Configuration de lieu non trouvée pour '{event_data['lieu']}' pour l'événement '{event_data['nom']}'. L'événement ne sera pas chargé.")
+                
+    evenements_objects = evenements_temp
+
+
+# ---Fonction pour charger les configurations des lieux---
+def charger_configurations_lieux():
+    """Charge les configurations des lieux depuis le fichier JSON et crée les objets LieuConfig."""
+    global LISTE_CONFIGS_LIEUX
+    chemin_fichier = obtenir_chemin_fichier_json(CHEMIN_CONFIGS_LIEUX)
+    
+    with open(chemin_fichier, 'r', encoding='utf-8') as file:
+        donnees_json = json.load(file)
+    
+    configs_temp = []
+    for lieu_data in donnees_json:
+        categories_config_pour_lieu = []
+        for cat_data in lieu_data.get('categories', []):
+            sieges_config_pour_categorie = []
+            for siege_data in cat_data.get('sieges', []):
+                # L'état 'disponible' du JSON est l'état initial, la classe Siege le prend par défaut à True
+                siege_obj = SiegeConfig(idSiege=siege_data['idSiege'],
+                                        identificationSiege=siege_data['identification'],
+                                        disponible=siege_data.get('disponible', True))
+                sieges_config_pour_categorie.append(siege_obj)
+            
+            categorie_config_obj = CategorieSiege(
+                idCategorieSiege=cat_data['idCategorieSiege'],
+                nomCategorie=cat_data['nomCategorie'],
+                prix=float(cat_data['prix']),
+                sieges=sieges_config_pour_categorie
+            )
+            categories_config_pour_lieu.append(categorie_config_obj)
+        
+        lieu_config_obj = Lieu(
+            nomLieu=lieu_data['nomLieu'],
+            adresse=lieu_data['adresse'],
+            capaciteTotaleIndicative=int(lieu_data['capaciteTotaleIndicative']),
+            categories=categories_config_pour_lieu
+        )
+        configs_temp.append(lieu_config_obj)
+    LISTE_CONFIGS_LIEUX = configs_temp
 
 # ---Initialisation des données au démarrage de l'application---
-# Ces fonctions sont appelées une fois pour charger les données en mémoire.
 charger_donnees_clients()
-charger_donnees_evenements()
+charger_configurations_lieux() # Charger en premier
+charger_donnees_evenements()   # Puis charger les événements qui dépendent des configs lieux
 
-# ---Fonction pour afficher les détails de l'événement sélectionné---
-def afficher_details_evenement(event, label):
-    """Affiche les détails de l'événement sélectionné dans la Listbox.
-    Cette fonction est appelée lorsque l'utilisateur sélectionne un événement dans la Listbox.
-    Elle récupère l'index de l'événement sélectionné et affiche ses détails dans le label spécifié."""
-    selection = event.widget.curselection()
+# --- Fonction globale pour mettre à jour les détails de l'événement et le combobox des catégories ---
+def maj_details_et_categories_evenement(
+    event_tk,
+    list_evene_widget: tk.Listbox, 
+    lbl_details_widget: ttk.Label, 
+    combo_categories_widget: ttk.Combobox, 
+    categories_obj_list_pour_event_ref: list[CategorieSiege] # Référence à la liste qui stockera les objets catégorie
+):
+    """Met à jour le label des détails de l'événement et peuple le combobox des catégories."""
+    global evenements_objects # Accès à la liste globale des événements
+
+    selection = list_evene_widget.curselection()
     if selection:
         index = selection[0]
-        # Utilisation de la liste d'objets Evenement
-        evenement_obj = evenements_objects[index] 
-        # Utilisation de la méthode afficher_details de l'objet Evenement
-        details = evenement_obj.afficher_details() 
-        label.config(text=details)
+        if 0 <= index < len(evenements_objects):
+            evenement_obj = evenements_objects[index]
+            lbl_details_widget.config(text=evenement_obj.afficher_details())
+            
+            categories_obj_list_pour_event_ref.clear()
+            combo_categories_widget['values'] = [] # Vider les valeurs affichées du combobox
+            
+            if evenement_obj.config_lieu_ref and evenement_obj.config_lieu_ref.categories:
+                valeurs_combobox = []
+                for cat_config_statique in evenement_obj.config_lieu_ref.categories:
+                    # Calculer les sièges disponibles pour cette catégorie DANS CET EVENEMENT
+                    sieges_dispo_cat_count = 0
+                    for siege_cfg in cat_config_statique.sieges:
+                        if evenement_obj.sieges_etat.get(siege_cfg.idSiege, False): # Vérifie l'état dans sieges_etat
+                            sieges_dispo_cat_count += 1
+                    
+                    valeurs_combobox.append(
+                        f"{cat_config_statique.nomCategorie} ({cat_config_statique.prix}€) - {sieges_dispo_cat_count} disp."
+                    )
+                    # Stocker la référence à l'objet de configuration statique de la catégorie
+                    categories_obj_list_pour_event_ref.append(cat_config_statique) 
+                
+                combo_categories_widget['values'] = valeurs_combobox
+                if valeurs_combobox:
+                    combo_categories_widget.current(0)
+                    combo_categories_widget.config(state='readonly')
+                else:
+                    combo_categories_widget.set("Aucune catégorie disponible")
+                    combo_categories_widget.config(state='disabled')
+            else:
+                combo_categories_widget.set("Catégories non définies")
+                combo_categories_widget.config(state='disabled')
+        else:
+            lbl_details_widget.config(text="Erreur: Index d'événement invalide.")
+            combo_categories_widget.set("")
+            combo_categories_widget.config(state='disabled')
+            categories_obj_list_pour_event_ref.clear()
     else:
-        label.config(text="Sélectionnez un événement pour voir les détails.")
+        lbl_details_widget.config(text="Sélectionnez un événement pour voir les détails.")
+        combo_categories_widget.set("")
+        combo_categories_widget.config(state='disabled')
+        categories_obj_list_pour_event_ref.clear()
+
 
 # ---Fonction pour obtenir le prochain ID de réservation unique---
 # la variable globale _prochain_id_reservation est utilisée pour générer des IDs uniques pour les réservations.
@@ -86,18 +185,56 @@ def obtenir_prochain_id_reservation() -> int:
     _prochain_id_reservation += 1
     return id_res
 
+# ---Fonction pour obtenir le prochain ID d'abonnement Newsletter unique---
+def obtenir_prochain_id_abonnement_newsletter() -> int:
+    """Génère un ID unique pour un nouvel abonnement newsletter."""
+    global _prochain_id_abonnement_newsletter
+    id_abo = _prochain_id_abonnement_newsletter
+    _prochain_id_abonnement_newsletter += 1
+    return id_abo
+
+# ---Fonction pour obtenir le prochain ID de paiement unique---
+def obtenir_prochain_id_paiement() -> int:
+    """Génère un ID unique pour un nouveau paiement."""
+    global _prochain_id_paiement
+    id_paiement = _prochain_id_paiement
+    _prochain_id_paiement += 1
+    return id_paiement
+
 # --- Fonctions pour les actions de l'utilisateur ---
-def effectuer_reservation_gui(list_evene_widget, entry_nb_billets_widget, listbox_mes_billets_widget, lbl_details_evenement_widget):
-    """Gère la logique de réservation de billets à partir de l'interface graphique."""
+def effectuer_reservation_gui(
+    list_evene_widget, 
+    combo_categories_sieges_widget,
+    categories_runtime_list: list[CategorieSiege], # Liste des objets CategorieConfigLieu (runtime)
+    entry_nb_billets_widget, 
+    listbox_mes_billets_widget, 
+    lbl_details_evenement_widget
+):
+    """Gère la logique de réservation de billets à partir de l'interface graphique,
+       en utilisant la catégorie de siège sélectionnée."""
     global utilisateur_actif, evenements_objects, reservations_objects
 
-    selection = list_evene_widget.curselection()
-    if not selection:
+    selection_event = list_evene_widget.curselection()
+    if not selection_event:
         messagebox.showwarning("Aucune sélection", "Veuillez sélectionner un événement.")
         return
     
-    index_evenement_selectionne = selection[0]
+    index_evenement_selectionne = selection_event[0]
     evenement_selectionne = evenements_objects[index_evenement_selectionne]
+
+    # Récupérer la catégorie sélectionnée
+    index_categorie_selectionnee = combo_categories_sieges_widget.current()
+    if index_categorie_selectionnee < 0 : # Aucune catégorie sélectionnée
+        messagebox.showwarning("Aucune sélection", "Veuillez sélectionner une catégorie de siège.")
+        return
+    
+    # S'assurer que la liste categories_runtime_list (qui contient maintenant les refs aux configs statiques)
+    # est bien celle de l'événement courant. maj_details_et_categories_evenement la peuple.
+    if not categories_runtime_list or index_categorie_selectionnee >= len(categories_runtime_list):
+        messagebox.showerror("Erreur Catégorie", "Erreur interne : la catégorie sélectionnée n'est pas valide ou la liste des catégories n'est pas à jour.")
+        return
+        
+    categorie_config_selectionnee = categories_runtime_list[index_categorie_selectionnee]
 
     try:
         nb_billets_str = entry_nb_billets_widget.get()
@@ -109,38 +246,68 @@ def effectuer_reservation_gui(list_evene_widget, entry_nb_billets_widget, listbo
         messagebox.showerror("Entrée invalide", "Veuillez entrer un nombre valide pour les billets.")
         return
 
-    # Vérifier la disponibilité avant de créer la réservation
-    if not evenement_selectionne.verifier_disponibilite_places(nb_billets):
-        messagebox.showinfo("Places insuffisantes", 
-                            f"Il ne reste que {evenement_selectionne.places_disponibles} place(s) pour {evenement_selectionne.nom}.")
+    # Vérifier la disponibilité dans la catégorie sélectionnée en utilisant sieges_etat de l'événement
+    sieges_config_disponibles_categorie = []
+    for siege_cfg in categorie_config_selectionnee.sieges:
+        if evenement_selectionne.sieges_etat.get(siege_cfg.idSiege, False):
+            sieges_config_disponibles_categorie.append(siege_cfg)
+
+    if len(sieges_config_disponibles_categorie) < nb_billets:
+        messagebox.showinfo("Places insuffisantes",
+                            f"Il ne reste que {len(sieges_config_disponibles_categorie)} place(s) disponible(s) "
+                            f"dans la catégorie '{categorie_config_selectionnee.nomCategorie}' pour {evenement_selectionne.nom}.")
         return
+        
+    # Sélectionner les sièges (configs statiques) spécifiques à réserver dans cette catégorie
+    sieges_configs_a_reserver = sieges_config_disponibles_categorie[:nb_billets]
 
     # Création de la réservation
     id_nouvelle_reservation = obtenir_prochain_id_reservation()
     nouvelle_reservation = Reservation(idReservation=id_nouvelle_reservation,
                                        idClient=utilisateur_actif.idClient,
                                        dateReservation=datetime.datetime.now())
+    
+    billets_ajoutes_avec_succes = 0
+    # sieges_configs_a_reserver contient les objets Siege de la config statique
+    for siege_config_pour_billet in sieges_configs_a_reserver: 
+        if nouvelle_reservation.ajouter_billet_pour_siege(evenement=evenement_selectionne,
+                                                          siege_config=siege_config_pour_billet, 
+                                                          categorie_config=categorie_config_selectionnee):
+            billets_ajoutes_avec_succes += 1
 
-    # Ajout des billets à la réservation
-    # La méthode ajouterBillet de Reservation gère maintenant la mise à jour des places de l'événement
-    if nouvelle_reservation.ajouterBillet(evenement=evenement_selectionne, quantite=nb_billets):
+    # Vérifier si tous les billets ont été ajoutés avec succès
+    if billets_ajoutes_avec_succes == nb_billets:
         utilisateur_actif.effectuerReservation(nouvelle_reservation)
-        reservations_objects.append(nouvelle_reservation) # Garder une trace de toutes les réservations
-        
-        messagebox.showinfo("Réservation réussie", 
-                            f"{nb_billets} billet(s) réservé(s) pour {evenement_selectionne.nom}.\n"
-                            f"ID de la réservation: {nouvelle_reservation.idReservation}\n"
-                            f"Montant total: {nouvelle_reservation.montantTotal} €")
-        
-        # Mettre à jour l'affichage des événements (nombre de places)
-        list_evene_widget.delete(index_evenement_selectionne)
-        list_evene_widget.insert(index_evenement_selectionne, 
-                                 f"{evenement_selectionne.date} - {evenement_selectionne.nom} ({evenement_selectionne.places_disponibles} places)")
-        list_evene_widget.selection_set(index_evenement_selectionne) # Re-sélectionner pour actualiser les détails
+        reservations_objects.append(nouvelle_reservation)
 
-        # Mettre à jour les détails de l'événement affichés
-        if lbl_details_evenement_widget:
-             lbl_details_evenement_widget.config(text=evenement_selectionne.afficher_details())
+        # Création et traitement du paiement
+        id_paiement = obtenir_prochain_id_paiement()
+        nouveau_paiement = Paiement(idPaiement=id_paiement,
+                                    idReservation=nouvelle_reservation.idReservation,
+                                    montant=nouvelle_reservation.montantTotal)
+        nouveau_paiement.effectuerPaiement() # Supposons que le paiement est immédiat
+        nouvelle_reservation.paiement = nouveau_paiement # Lier le paiement à la réservation
+
+        message_succes = (f"{nb_billets} billet(s) réservé(s) pour {evenement_selectionne.nom}.\n"
+                          f"ID de la réservation: {nouvelle_reservation.idReservation}\n"
+                          f"Montant total: {nouvelle_reservation.montantTotal} €\n"
+                          f"Statut du paiement: {nouveau_paiement.statutPaiement}")
+        messagebox.showinfo("Réservation réussie", message_succes)
+        
+        # Mettre à jour l'affichage des détails de l'événement et le combobox des catégories
+        # si l'événement concerné est celui actuellement sélectionné.
+        current_selection_indices = list_evene_widget.curselection()
+        if current_selection_indices and current_selection_indices[0] == index_evenement_selectionne:
+            # Créer un objet event factice pour appeler maj_details_et_categories_evenement,
+            # car cette fonction attend un event Tkinter comme argument.
+            # On passe None pour event_tk car la fonction n'utilise pas cet argument quand elle est appelée ainsi.
+            maj_details_et_categories_evenement(
+                None, # event_tk_dummy
+                list_evene_widget,
+                lbl_details_evenement_widget,
+                combo_categories_sieges_widget,
+                categories_runtime_list # C'est la liste des objets catégorie pour l'event courant
+            )
 
         # Mettre à jour la liste "Mes Billets"
         actualiser_liste_mes_billets(listbox_mes_billets_widget)
@@ -153,13 +320,28 @@ def actualiser_liste_mes_billets(listbox_widget):
         for reservation in utilisateur_actif.reservations:
             for billet in reservation.billets:
                 # Trouver le nom de l'événement associé au billet
-                evenement_associe = next((i for i in evenements_objects if i.id_event == billet.id_event), None)
-                nom_evenement = evenement_associe.nom
-                # Ajouter les détails du billet à la Listbox
-                listbox_widget.insert(tk.END, billet.afficher_details_billet(nom_evenement=nom_evenement))
+                evenement_associe = next((evt for evt in evenements_objects if evt.id_event == billet.id_event), None)
+                nom_evenement = "Événement inconnu"
+                if evenement_associe:
+                    nom_evenement = evenement_associe.nom
+                
+                details_billet_str = billet.afficher_details_billet(nom_evenement=nom_evenement)
+                # Ajouter le statut du paiement
+                if reservation.paiement:
+                    details_billet_str += f" - Paiement: {reservation.paiement.statutPaiement}"
+
+                # Ajouter le billet à la listbox    
+                listbox_widget.insert(tk.END, details_billet_str)
 
 # ---Fonction pour annuler une réservation/billet à partir de l'interface graphique---
-def annuler_billet_reservation_gui(entry_billet_id_annul_widget, list_evene_widget, listbox_mes_billets_widget, lbl_details_evenement_widget):
+def annuler_billet_reservation_gui(
+    entry_billet_id_annul_widget, 
+    list_evene_widget, 
+    listbox_mes_billets_widget, 
+    lbl_details_evenement_widget,
+    combo_categories_sieges_widget,
+    categories_runtime_list_ref: list[CategorieSiege]
+):
     """Gère la logique d'annulation d'une réservation/billet à partir de l'interface graphique."""
     global utilisateur_actif, evenements_objects, reservations_objects
 
@@ -184,35 +366,54 @@ def annuler_billet_reservation_gui(entry_billet_id_annul_widget, list_evene_widg
     # On suppose que tous les billets d'une réservation sont pour le même événement (simplification)
     id_event_concerne = reservation_a_annuler.billets[0].id_event
     
-    # La méthode annulerReservation de la classe Reservation s'occupe de remettre les places
+    # La méthode annulerReservation de la classe Reservation s'occupe de libérer les sièges
     # et de vider la liste des billets de la réservation.
     # Elle a besoin de la liste globale des événements pour trouver l'objet Evenement à mettre à jour.
+    message_annulation = f"Réservation {id_reservation_a_annuler} annulée."
+    
+    # Gérer le remboursement si un paiement a été effectué
+    if reservation_a_annuler.paiement and reservation_a_annuler.paiement.statutPaiement == "Payé":
+        if reservation_a_annuler.paiement.rembourserPaiement():
+            message_annulation += f"\nPaiement remboursé (Statut: {reservation_a_annuler.paiement.statutPaiement})."
+        else:
+            message_annulation += f"\nÉchec du remboursement du paiement (Statut: {reservation_a_annuler.paiement.statutPaiement})."
+    elif reservation_a_annuler.paiement:
+        message_annulation += f"\nStatut du paiement: {reservation_a_annuler.paiement.statutPaiement} (aucun remboursement nécessaire)."
+
+
     if reservation_a_annuler.annulerReservation(evenements_data=evenements_objects):
         # Retirer la réservation de la liste des réservations de l'utilisateur
         if reservation_a_annuler in utilisateur_actif.reservations:
              utilisateur_actif.reservations.remove(reservation_a_annuler)
-        # Optionnel: Retirer de la liste globale si on ne veut plus la suivre du tout
+        # Retirer également de la liste globale pour éviter qu'elle ne soit rechargée
         if reservation_a_annuler in reservations_objects:
             reservations_objects.remove(reservation_a_annuler)
         
-        # Mettre à jour l'affichage des événements (nombre de places)
-        index_evenement_maj = next(i for i, evt in enumerate(evenements_objects) if evt.id_event == id_event_concerne)
-        evenement_maj = evenements_objects[index_evenement_maj]
-        list_evene_widget.delete(index_evenement_maj)
-        list_evene_widget.insert(index_evenement_maj, f"{evenement_maj.date} - {evenement_maj.nom} ({evenement_maj.places_disponibles} places)")
-            
-        # Si l'événement annulé était sélectionné, mettre à jour ses détails
-        selection_courante = list_evene_widget.curselection()
-        if selection_courante and selection_courante[0] == index_evenement_maj:
-            if lbl_details_evenement_widget:
-                lbl_details_evenement_widget.config(text=evenement_maj.afficher_details())
-            
+        messagebox.showinfo("Annulation Réussie", message_annulation)
+
+        # Mettre à jour l'affichage des détails de l'événement et le combobox des catégories
+        # si l'événement concerné est celui actuellement sélectionné.
+        evenement_concerne_obj = next((evt for evt in evenements_objects if evt.id_event == id_event_concerne), None)
+        if evenement_concerne_obj: # S'assurer que l'objet événement a été trouvé
+            current_selection_indices = list_evene_widget.curselection()
+            if current_selection_indices:
+                index_evt_selectionne_dans_liste = current_selection_indices[0]
+                # Vérifier si l'événement annulé est celui actuellement sélectionné dans la liste
+                if index_evt_selectionne_dans_liste < len(evenements_objects) and \
+                   evenements_objects[index_evt_selectionne_dans_liste].id_event == id_event_concerne:
+                    
+                    maj_details_et_categories_evenement(
+                        None, # event_tk_dummy
+                        list_evene_widget,
+                        lbl_details_evenement_widget,
+                        combo_categories_sieges_widget,
+                        categories_runtime_list_ref
+                    )
+
         # Mettre à jour la liste "Mes Billets"
         actualiser_liste_mes_billets(listbox_mes_billets_widget)
         entry_billet_id_annul_widget.delete(0, tk.END) # Vider le champ après annulation
-    else:
-        messagebox.showerror("Échec de l'annulation", f"L'annulation de la réservation {id_reservation_a_annuler} a échoué.")
-
+    
 # ---Fonction pour afficher la fenêtre de connexion---
 def afficher_fenetre_login():
     """Affiche la fenêtre de connexion."""
@@ -274,11 +475,29 @@ def afficher_fenetre_login():
         
         if utilisateur_trouve:
             utilisateur_actif = utilisateur_trouve
-            # Initialiser les réservations de l'utilisateur actif
-            if hasattr(utilisateur_actif, 'reservations'):
-                 utilisateur_actif.reservations = [] 
-            else: # S'assurer que l'attribut existe
-                utilisateur_actif.reservations = []
+            
+            # Récupérer les réservations existantes pour cet utilisateur depuis la liste globale
+            reservations_de_l_utilisateur = []
+            if hasattr(utilisateur_actif, 'idClient'): # Vérifier que utilisateur_actif est bien un Client
+                for res in reservations_objects: # reservations_objects est la liste globale
+                    if res.idClient == utilisateur_actif.idClient:
+                        reservations_de_l_utilisateur.append(res)
+            
+            # Assigner les réservations trouvées (ou une liste vide si aucune)
+            if hasattr(utilisateur_actif, 'reservations'): # L'attribut doit exister (défini dans Client.__init__)
+                utilisateur_actif.reservations = reservations_de_l_utilisateur 
+            
+            # Initialiser l'état de la newsletter pour l'utilisateur
+            if not hasattr(utilisateur_actif, 'est_abonne_newsletter'):
+                utilisateur_actif.est_abonne_newsletter = False
+            if not hasattr(utilisateur_actif, 'newsletter_abonnement'):
+                utilisateur_actif.newsletter_abonnement = None
+            
+            # Tentative de retrouver un objet Newsletter existant pour cet utilisateur s'il se reconnecte
+            newsletter_existante = next((n for n in abonnements_newsletter_objects if n.emailClient == utilisateur_actif.email), None)
+            if newsletter_existante:
+                utilisateur_actif.newsletter_abonnement = newsletter_existante
+                utilisateur_actif.est_abonne_newsletter = newsletter_existante.estActif
 
             fenetre_login.destroy()
             afficher_fenetre_principale()
@@ -302,7 +521,7 @@ def afficher_fenetre_principale():
     """
     fenetre_principale = tk.Tk()
     fenetre_principale.title("Réservation de billets")
-    fenetre_principale.geometry("900x800") # Taille de la nouvelle fenêtre
+    fenetre_principale.geometry("900x800")
 
     # ---Style---
     style = ttk.Style()
@@ -336,25 +555,63 @@ def afficher_fenetre_principale():
     def detruire_fenetre():
         """Ferme la fenêtre principale et retourne à la fenêtre de connexion."""
         fenetre_principale.destroy()
-        afficher_fenetre_login() # Recharge la fenêtre de login, réinitialisant l'état global si nécessaire
+        afficher_fenetre_login()
     ttk.Button(user_frame, text="Changer d'Utilisateur", command=detruire_fenetre).pack(side=tk.RIGHT)
 
     # ---Boutons pour la Newsletter---
-    # Cadre pour les boutons de newsletter pour un meilleur agencement
     newsletter_frame = ttk.Frame(user_frame)
     newsletter_frame.pack(side=tk.RIGHT, padx=10)
-    ttk.Button(newsletter_frame, text="S'abonner Newsletter", command=None).pack(side=tk.LEFT)
-    # Ajout d'un bouton de désabonnement
-    ttk.Button(newsletter_frame, text="Se désabonner", command=None).pack(side=tk.LEFT, padx=5)
+
+    btn_abonner_newsletter = ttk.Button(newsletter_frame, text="S'abonner Newsletter")
+    btn_desabonner_newsletter = ttk.Button(newsletter_frame, text="Se désabonner")
+
+    def maj_etat_boutons_newsletter():
+        """Met à jour l'état (activé/désactivé) des boutons de newsletter."""
+        if utilisateur_actif and utilisateur_actif.est_abonne_newsletter:
+            btn_abonner_newsletter.config(state=tk.DISABLED)
+            btn_desabonner_newsletter.config(state=tk.NORMAL)
+        else:
+            btn_abonner_newsletter.config(state=tk.NORMAL)
+            btn_desabonner_newsletter.config(state=tk.DISABLED)
+
+    def abonner_newsletter_gui():
+        global utilisateur_actif, abonnements_newsletter_objects
+        if utilisateur_actif and not utilisateur_actif.est_abonne_newsletter:
+            id_abo = obtenir_prochain_id_abonnement_newsletter()
+            # Vérifier si un objet newsletter existe déjà pour cet email pour le réactiver
+            newsletter_existante = next((n for n in abonnements_newsletter_objects if n.emailClient == utilisateur_actif.email), None)
+            if newsletter_existante:
+                utilisateur_actif.gererAbonnementNewsletter(s_abonner=True, newsletter_obj=newsletter_existante)
+            else:
+                nouvel_abonnement = Newsletter(idAbonnement=id_abo, emailClient=utilisateur_actif.email)
+                utilisateur_actif.gererAbonnementNewsletter(s_abonner=True, newsletter_obj=nouvel_abonnement)
+                abonnements_newsletter_objects.append(nouvel_abonnement)
+            
+            messagebox.showinfo("Newsletter", f"{utilisateur_actif.nom}, vous êtes maintenant abonné à la newsletter.")
+            maj_etat_boutons_newsletter()
+
+    def desabonner_newsletter_gui():
+        global utilisateur_actif
+        if utilisateur_actif and utilisateur_actif.est_abonne_newsletter:
+            utilisateur_actif.gererAbonnementNewsletter(s_abonner=False) # L'objet newsletter est déjà sur le client
+            messagebox.showinfo("Newsletter", f"{utilisateur_actif.nom}, vous êtes maintenant désabonné de la newsletter.")
+            maj_etat_boutons_newsletter()
+
+    btn_abonner_newsletter.config(command=abonner_newsletter_gui)
+    btn_desabonner_newsletter.config(command=desabonner_newsletter_gui)
     
+    btn_abonner_newsletter.pack(side=tk.LEFT)
+    btn_desabonner_newsletter.pack(side=tk.LEFT, padx=5)
+    maj_etat_boutons_newsletter() # Appel initial pour définir l'état correct des boutons
+
     # ---Section Événements---
     frame_evene = ttk.LabelFrame(frame_princip, text="Événements Disponibles", padding="10")
     frame_evene.pack(expand=True, fill=tk.BOTH, pady=5)
 
     list_evene = tk.Listbox(frame_evene, height=10, exportselection=False, font=('Consolas', 10))
     list_evene.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0,10))
-    list_evene.bind('<<ListboxSelect>>', lambda event: afficher_details_evenement(event, lbl_details_evenement)) # Affiche les détails de l'événement sélectionné
-
+    
+    # Ajout d'une scrollbar verticale pour la Listbox des événements
     scrollbar_evene = ttk.Scrollbar(frame_evene, orient=tk.VERTICAL, command=list_evene.yview)
     scrollbar_evene.pack(side=tk.LEFT, fill=tk.Y)
     list_evene.config(yscrollcommand=scrollbar_evene.set) # La scrollbar sera gérée par la listbox
@@ -368,9 +625,8 @@ def afficher_fenetre_principale():
     lbl_details_evenement.pack(anchor=tk.NW, fill=tk.X)
 
     # ---Remplissage de la Listbox avec les événements---
-    # Utilisation des objets Evenement chargés
-    for evenement_obj in evenements_objects:
-        list_evene.insert(tk.END, f"{evenement_obj.date} - {evenement_obj.nom} ({evenement_obj.places_disponibles} places)")
+    for evenement_obj in evenements_objects: # evenements_objects est global
+        list_evene.insert(tk.END, f"{evenement_obj.date} - {evenement_obj.nom}")
 
     # --- Section Actions (Réservation / Annulation) ---
     frame_action = ttk.LabelFrame(frame_princip, text="Actions", padding="10")
@@ -379,28 +635,67 @@ def afficher_fenetre_principale():
     # ---Réservation---
     frame_reserv = ttk.Frame(frame_action)
     frame_reserv.pack(fill=tk.X, pady=5)
-    ttk.Label(frame_reserv, text="Nb Billets:").pack(side=tk.LEFT, padx=5)
+
+    ttk.Label(frame_reserv, text="Catégorie:").pack(side=tk.LEFT, padx=(5,0))
+    combo_categories_sieges = ttk.Combobox(frame_reserv, width=35, state="disabled") 
+    combo_categories_sieges.pack(side=tk.LEFT, padx=5)
+    
+    # Cette liste sera une référence à la liste définie dans afficher_fenetre_principale
+    # et sera modifiée par maj_details_et_categories_evenement (qui sera globale)
+    # Elle doit être initialisée ici pour que le lambda de btn_reserver puisse la capturer.
+    categories_objets_pour_event_selectionne_ref: list[CategorieSiege] = [] 
+
+    # Liaison de la Listbox des événements à la fonction globale de mise à jour
+    # Le lambda est utilisé pour passer les arguments nécessaires à la fonction globale.
+    list_evene.bind('<<ListboxSelect>>', 
+                    lambda event_tk: maj_details_et_categories_evenement(
+                        event_tk,
+                        list_evene,
+                        lbl_details_evenement,
+                        combo_categories_sieges,
+                        categories_objets_pour_event_selectionne_ref
+                    )
+    )
+
+    ttk.Label(frame_reserv, text="Nb Billets:").pack(side=tk.LEFT, padx=(10,0))
     entry_nb_billets = ttk.Entry(frame_reserv, width=3)
     entry_nb_billets.insert(0, "1") # Valeur par défaut
     entry_nb_billets.pack(side=tk.LEFT, padx=5)
-    # Connection de la fonction de réservation au bouton
-    ttk.Button(frame_reserv, text="Réserver Billets", 
-               command=lambda: effectuer_reservation_gui(list_evene, entry_nb_billets, listbox_mes_billets, lbl_details_evenement)
-              ).pack(side=tk.LEFT, padx=5)
+    
+    # La commande du bouton Réserver devra maintenant aussi passer le combobox ou sa sélection
+    btn_reserver = ttk.Button(frame_reserv, text="Réserver Billets", 
+               command=lambda: effectuer_reservation_gui(
+                   list_evene,
+                   combo_categories_sieges,
+                   categories_objets_pour_event_selectionne_ref,
+                   entry_nb_billets,
+                   listbox_mes_billets,
+                   lbl_details_evenement
+                )
+              )
+    btn_reserver.pack(side=tk.LEFT, padx=5)
 
     # ---Annulation---
     frame_annula = ttk.Frame(frame_action)
     frame_annula.pack(fill=tk.X, pady=5)
-    ttk.Label(frame_annula, text="ID Réservation à Annuler:").pack(side=tk.LEFT, padx=5) # Texte clarifié
+    ttk.Label(frame_annula, text="ID Réservation à Annuler:").pack(side=tk.LEFT, padx=5)
     entry_billet_id_annul = ttk.Entry(frame_annula, width=5)
     entry_billet_id_annul.pack(side=tk.LEFT, padx=5)
     # Connection de la fonction d'annulation au bouton
-    ttk.Button(frame_annula, text="Annuler Réservation", # Texte clarifié
-               command=lambda: annuler_billet_reservation_gui(entry_billet_id_annul, list_evene, listbox_mes_billets, lbl_details_evenement)
-              ).pack(side=tk.LEFT, padx=5)
+    btn_annuler = ttk.Button(frame_annula, text="Annuler Réservation",
+               command=lambda: annuler_billet_reservation_gui(
+                   entry_billet_id_annul, 
+                   list_evene, 
+                   listbox_mes_billets, 
+                   lbl_details_evenement,
+                   combo_categories_sieges,
+                   categories_objets_pour_event_selectionne_ref
+                )
+            )
+    btn_annuler.pack(side=tk.LEFT, padx=5)
 
     # ---Section Mes Billets---
-    frame_billet = ttk.LabelFrame(frame_princip, text="Mes Billets (Réservations Actives)", padding="10") # Titre clarifié
+    frame_billet = ttk.LabelFrame(frame_princip, text="Mes Billets (Réservations Actives)", padding="10")
     frame_billet.pack(fill=tk.X, pady=5)
 
     listbox_mes_billets = tk.Listbox(frame_billet, height=5, font=('Consolas', 10))
@@ -410,7 +705,7 @@ def afficher_fenetre_principale():
     scrollbar_mes_billets.pack(side=tk.LEFT, fill=tk.Y) # Scrollbar à gauche de la listbox
     listbox_mes_billets.config(yscrollcommand=scrollbar_mes_billets.set)
 
-    # Appel initial pour charger les billets si l'utilisateur en a déjà (peu probable à ce stade, mais bonne pratique)
+    # Appel initial pour charger les billets si l'utilisateur en a déjà
     actualiser_liste_mes_billets(listbox_mes_billets)
     
     fenetre_principale.mainloop()

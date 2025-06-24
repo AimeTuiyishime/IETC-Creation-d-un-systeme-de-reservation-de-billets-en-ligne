@@ -1,0 +1,114 @@
+[
+  {
+    "nomLieu": "Salle de Concert ABC",
+    "adresse": "123 Rue de la Musique, Paris",
+    "capaciteTotaleIndicative": 10,
+    "categories": [
+      {
+        "idCategorieSiege": "SCA-STD",
+        "nomCategorie": "Standard",
+        "prix": 25.00,
+        "sieges": [
+          {"idSiege": "SCA-A1", "identification": "A1", "disponible": true},
+          {"idSiege": "SCA-A2", "identification": "A2", "disponible": true},
+          {"idSiege": "SCA-A3", "identification": "A3", "disponible": true},
+          {"idSiege": "SCA-A4", "identification": "A4", "disponible": true},
+          {"idSiege": "SCA-A5", "identification": "A5", "disponible": true}
+        ]
+      },
+      {
+        "idCategorieSiege": "SCA-PRE",
+        "nomCategorie": "Premium",
+        "prix": 40.00,
+        "sieges": [
+          {"idSiege": "SCA-P1", "identification": "P1", "disponible": true},
+          {"idSiege": "SCA-P2", "identification": "P2", "disponible": true},
+          {"idSiege": "SCA-P3", "identification": "P3", "disponible": true},
+          {"idSiege": "SCA-P4", "identification": "P4", "disponible": true},
+          {"idSiege": "SCA-P5", "identification": "P5", "disponible": true}
+        ]
+      }
+    ]
+  },
+  {
+    "nomLieu": "Théâtre Olympia",
+    "adresse": "54 Boulevard des Capucines, Paris",
+  "capaciteTotaleIndicative": 15,
+    "categories": [
+      {
+        "idCategorieSiege": "TO-BAL",
+        "nomCategorie": "Balcon",
+        "prix": 30.00,
+        "sieges": [
+          {"idSiege": "TO-B1", "identification": "Balcon B1", "disponible": true},
+          {"idSiege": "TO-B2", "identification": "Balcon B2", "disponible": true},
+          {"idSiege": "TO-B3", "identification": "Balcon B3", "disponible": true},
+          {"idSiege": "TO-B4", "identification": "Balcon B4", "disponible": true},
+          {"idSiege": "TO-B5", "identification": "Balcon B5", "disponible": true}
+        ]
+      },
+      {
+        "idCategorieSiege": "TO-ORC",
+        "nomCategorie": "Orchestre",
+        "prix": 50.00,
+        "sieges": [
+          {"idSiege": "TO-O1", "identification": "Orchestre O1", "disponible": true},
+          {"idSiege": "TO-O2", "identification": "Orchestre O2", "disponible": true},
+          {"idSiege": "TO-O3", "identification": "Orchestre O3", "disponible": true},
+          {"idSiege": "TO-O4", "identification": "Orchestre O4", "disponible": true},
+          {"idSiege": "TO-O5", "identification": "Orchestre O5", "disponible": true}
+        ]
+      },
+      {
+        "idCategorieSiege": "TO-VIP",
+        "nomCategorie": "VIP Box",
+        "prix": 75.00,
+        "sieges": [
+          {"idSiege": "TO-V1", "identification": "VIP V1", "disponible": true},
+          {"idSiege": "TO-V2", "identification": "VIP V2", "disponible": true},
+          {"idSiege": "TO-V3", "identification": "VIP V3", "disponible": true},
+          {"idSiege": "TO-V4", "identification": "VIP V4", "disponible": true},
+          {"idSiege": "TO-V5", "identification": "VIP V5", "disponible": true}
+        ]
+      }
+    ]
+  },
+  {
+    "nomLieu": "Galerie d'Art XYZ",
+    "adresse": "11 Avenue du Président Wilson, Paris",
+    "capaciteTotaleIndicative": 5,
+    "categories": [
+      {
+        "idCategorieSiege": "GA-GEN",
+        "nomCategorie": "Entrée Générale",
+        "prix": 10.00,
+        "sieges": [
+          {"idSiege": "GA-E1", "identification": "Accès 1", "disponible": true},
+          {"idSiege": "GA-E2", "identification": "Accès 2", "disponible": true},
+          {"idSiege": "GA-E3", "identification": "Accès 3", "disponible": true},
+          {"idSiege": "GA-E4", "identification": "Accès 4", "disponible": true},
+          {"idSiege": "GA-E5", "identification": "Accès 5", "disponible": true}
+        ]
+      }
+    ]
+  },
+  {
+    "nomLieu": "Centre de Conférences Tech",
+    "adresse": "Silicon Valley Extension, Paris",
+    "capaciteTotaleIndicative": 5,
+     "categories": [
+      {
+        "idCategorieSiege": "CCT-GEN",
+        "nomCategorie": "Admission Générale",
+        "prix": 15.00,
+        "sieges": [
+          {"idSiege": "CCT-S1", "identification": "Siège Conf 1", "disponible": true},
+          {"idSiege": "CCT-S2", "identification": "Siège Conf 2", "disponible": true},
+          {"idSiege": "CCT-S3", "identification": "Siège Conf 3", "disponible": true},
+          {"idSiege": "CCT-S4", "identification": "Siège Conf 4", "disponible": true},
+          {"idSiege": "CCT-S5", "identification": "Siège Conf 5", "disponible": true}
+        ]
+      }
+    ]
+  }
+]

@@ -57,3 +57,20 @@ Fonctionnalités prévues (partiellement ou non encore implémentées dans la GU
 -   Choix spécifique des sièges par catégorie.
 -   Processus de paiement.
 -   Abonnement à la Newsletter
+
+mise à jour le 24/06/2025 par Grobloc et El-Nehmo:
+
+finalisation de la GUI et ajout de fonctionnalités supplémentaires :
+
+-   **Gestion categorie de sièges**:
+    -   Les utilisateurs peuvent choisir des sièges en fonction de leur catégorie (VIP, standard, etc.) lors de la réservation.
+    -   Les catégories de sièges sont définies dans le fichier `données_categorie.json`, permettant une flexibilité dans la gestion des différents types de sièges.
+-   **siege**: 
+    -   Chaque siège est associé à un événement et à une catégorie, permettant une gestion précise des réservations.
+-   **Gestion des paiements**: 
+    -   Intégration d'un processus de paiement sécurisé pour finaliser les réservations.
+-   **Newsletter**:
+    -   Les utilisateurs peuvent s'inscrire à une newsletter pour recevoir des informations sur les événements à venir et les promotions.
+-   **lieu**:
+    -   Chaque événement est associé à un lieu spécifique, facilitant la gestion des réservations par emplacement.
+    -   les lieux sont définis dans le fichier `données_lieu.json`, permettant une flexibilité dans la gestion des différents lieux d'événements.
