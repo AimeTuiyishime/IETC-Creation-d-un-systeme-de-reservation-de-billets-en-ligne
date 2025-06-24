@@ -1,0 +1,15 @@
+[
+    {
+        "idclient": 1,
+        "nom": "user1",
+        "password": "user1",
+        "email": "user1@test.com"
+    },
+
+    {
+        "idclient": 2,
+        "nom": "user2",
+        "password": "user2",
+        "email": "user2@test.com"
+    }
+]
