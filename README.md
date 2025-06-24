@@ -70,6 +70,9 @@ python -m unittest discover tests
 │   ├── package_lass_additionnel.py           # Toutes les classes métier regroupées (lieu, siège,etc)
 │   ├── GUI.py                         # Interface graphique (Tkinter)
 │   ├── package_classe_base.py         # Classes client, réservation regroupées
+│   ├── donées_event.json
+│   ├── donées_clients.json
+│   ├── donées_configuration_lieux.json
 ├── tests unitaire/
 │   ├── __init__.py
 │   ├── test_lieu.py
@@ -128,6 +131,7 @@ Cela ouvrira l’interface graphique du système de réservation.
 ---
 
 ---
+
 
 ## 🔐 Informations de connexion (comptes de test)
 
