@@ -64,31 +64,26 @@ python -m unittest discover tests
 .
 ├── main.py
 ├── README.md
-├── .gitignore
-├── test_paiement_gui.py
-├── diagramme_classe/
-│   └── ...
+├── requirements.txt
 ├── package/
 │   ├── __init__.py
-│   ├── class_additionnel.py           # Toutes les classes métier regroupées
+│   ├── package_lass_additionnel.py           # Toutes les classes métier regroupées (lieu, siège,etc)
 │   ├── GUI.py                         # Interface graphique (Tkinter)
-│   ├── categorie_de_siege.py
-│   ├── donnees_event.json
-│   ├── donnees.json
-│   ├── lieu.py
-│   ├── newsletter.py                  # Ancienne version (remplacée)
-│   ├── package_class_Aime.py
-│   ├── paiement.py
-│   └── siege.py
-├── tests/
+│   ├── package_classe_base.py         # Classes client, réservation regroupées
+├── tests unitaire/
 │   ├── __init__.py
 │   ├── test_lieu.py
 │   ├── test_newsletter.py
 │   ├── test_paiement.py
 │   ├── test_siege.py
 │   └── ...
-└── diagrammes/
-    └── Diagramme_classe.pdf           # Diagramme UML des classes
+└── diagrammes_classe
+|    └── Diagramme_classe.pdf           # Diagramme UML des classes
+├── pv-reunions/
+│   ├── pv_reunion_01.md
+│   ├── pv_reunion_02.md
+│   └── ...
+
 
 ```
 
@@ -131,6 +126,17 @@ python main.py
 Cela ouvrira l’interface graphique du système de réservation.
 
 ---
+
+---
+
+## 🔐 Informations de connexion (comptes de test)
+
+Utiliser les comptes enregistrés dans `package/données_clients.json` pour accéder à l'application lors des tests :
+
+| Nom d’utilisateur | Mot de passe | Email            |
+|-------------------|--------------|------------------|
+| user1             | user1        | user1@test.com   |
+| user2             | user2        | user2@test.com   |
 
 ## 👥 Équipe projet
 
